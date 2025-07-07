@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>數據工具雲端服務</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container py-5">
+        <h1 class="mb-4">數據工具雲端服務</h1>
+        <p>歡迎使用本服務！請透過下方 API 測試區與後端互動。</p>
+        <hr>
+        <h2>API 測試</h2>
+        <form id="apiForm" class="mb-3">
+            <div class="mb-3">
+                <label for="apiInput" class="form-label">請輸入測試資料：</label>
+                <input type="text" class="form-control" id="apiInput" placeholder="例如：關鍵字...">
+            </div>
+            <button type="submit" class="btn btn-primary">送出測試</button>
+        </form>
+        <div id="apiResult" class="alert alert-info d-none"></div>
+    </div>
+    <script>
+    document.getElementById('apiForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const input = document.getElementById('apiInput').value;
+        // 假設有 /api/keyword_count 這個 API
+        const res = await fetch('/api/keyword_count', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: input })
+        });
+        const data = await res.json();
+        const resultDiv = document.getElementById('apiResult');
+        resultDiv.classList.remove('d-none');
+        resultDiv.textContent = JSON.stringify(data, null, 2);
+    });
+    </script>
+</body>
+</html> 
