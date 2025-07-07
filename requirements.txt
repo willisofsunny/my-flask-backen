@@ -1,2 +1,6 @@
 flask
-flask-cors 
+flask-cors
+gunicorn==21.2.0
+pandas
+openpyxl
+# 其他你用到的套件 
