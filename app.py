@@ -23,148 +23,195 @@ def serve_index():
 # 關鍵字計數
 @app.route('/api/keyword_count', methods=['POST'])
 def api_keyword_count():
-    if request.content_type and request.content_type.startswith('multipart/form-data'):
-        # 支援未來檔案上傳擴充
-        return jsonify({'error': '目前僅支援 JSON 輸入'}), 400
-    data = request.get_json()
-    text = data.get('text', '')
-    keywords = data.get('keywords', [])
-    result = keyword_count(text, keywords)
-    return jsonify(result)
+    try:
+        if request.content_type and request.content_type.startswith('multipart/form-data'):
+            file = request.files['file']
+            column_name = request.form.get('column_name')
+            keywords = set(request.form.get('keywords', '').split(','))
+            filename = file.filename
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp:
+                file.save(tmp.name)
+                result_df = keyword_count(tmp.name, column_name, keywords)
+            return jsonify(result_df.to_dict(orient='records'))
+        else:
+            data = request.get_json()
+            file_path = data.get('file_path')
+            column_name = data.get('column_name')
+            keywords = set(data.get('keywords', []))
+            result_df = keyword_count(file_path, column_name, keywords)
+            return jsonify(result_df.to_dict(orient='records'))
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # 相似公司名稱合併
 @app.route('/api/keyword_similar_merge', methods=['POST'])
 def api_keyword_similar_merge():
-    if request.content_type and request.content_type.startswith('multipart/form-data'):
-        file = request.files['file']
-        threshold = float(request.form.get('threshold', 0.9))
-        filename = file.filename
-        df = pd.read_excel(file) if filename.endswith(('xlsx','xls')) else pd.read_csv(file)
-        # 假設 keyword_similar_merge 支援 DataFrame 輸入
-        result = keyword_similar_merge(df, threshold=threshold)
-        return jsonify(result)
-    else:
-        data = request.get_json()
-        result = keyword_similar_merge(**data)
-        return jsonify(result)
+    try:
+        if request.content_type and request.content_type.startswith('multipart/form-data'):
+            file = request.files['file']
+            threshold = float(request.form.get('threshold', 0.9))
+            filename = file.filename
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp:
+                file.save(tmp.name)
+                result_df = keyword_similar_merge(tmp.name, threshold=threshold)
+            return jsonify(result_df.to_dict(orient='records'))
+        else:
+            data = request.get_json()
+            file_path = data.get('file_path')
+            threshold = float(data.get('threshold', 0.9))
+            result_df = keyword_similar_merge(file_path, threshold=threshold)
+            return jsonify(result_df.to_dict(orient='records'))
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # 公司名稱提取與詞雲
 @app.route('/api/keyword_extraction', methods=['POST'])
 def api_keyword_extraction():
-    if request.content_type and request.content_type.startswith('multipart/form-data'):
-        file = request.files['file']
-        filename = file.filename
-        df = pd.read_excel(file) if filename.endswith(('xlsx','xls')) else pd.read_csv(file)
-        # 假設 keyword_extraction 支援 DataFrame 輸入
-        result = keyword_extraction(df)
-        return jsonify(result)
-    else:
-        data = request.get_json()
-        result = keyword_extraction(**data)
-        return jsonify(result)
+    try:
+        if request.content_type and request.content_type.startswith('multipart/form-data'):
+            file = request.files['file']
+            filename = file.filename
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp:
+                file.save(tmp.name)
+                df, img_path = keyword_extraction(tmp.name)
+            return jsonify({'data': df.to_dict(orient='records'), 'wordcloud_img': img_path})
+        else:
+            data = request.get_json()
+            file_path = data.get('file_path')
+            df, img_path = keyword_extraction(file_path)
+            return jsonify({'data': df.to_dict(orient='records'), 'wordcloud_img': img_path})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # 公司詞雲與圓餅圖
 @app.route('/api/workcloud', methods=['POST'])
 def api_workcloud():
-    if request.content_type and request.content_type.startswith('multipart/form-data'):
-        file = request.files['file']
-        filename = file.filename
-        df = pd.read_excel(file) if filename.endswith(('xlsx','xls')) else pd.read_csv(file)
-        result = workcloud(df)
-        return jsonify(result)
-    else:
-        data = request.get_json()
-        result = workcloud(**data)
-        return jsonify(result)
+    try:
+        if request.content_type and request.content_type.startswith('multipart/form-data'):
+            file = request.files['file']
+            filename = file.filename
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp:
+                file.save(tmp.name)
+                wc_path, pie_path = workcloud(tmp.name)
+            return jsonify({'wordcloud_img': wc_path, 'pie_img': pie_path})
+        else:
+            data = request.get_json()
+            file_path = data.get('file_path')
+            wc_path, pie_path = workcloud(file_path)
+            return jsonify({'wordcloud_img': wc_path, 'pie_img': pie_path})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # 表格智能匹配
 @app.route('/api/table_matcher', methods=['POST'])
 def api_table_matcher():
-    if request.content_type and request.content_type.startswith('multipart/form-data'):
-        main_file = request.files['main_file']
-        tag_file = request.files['tag_file']
-        main_df = pd.read_excel(main_file) if main_file.filename.endswith(('xlsx','xls')) else pd.read_csv(main_file)
-        tag_df = pd.read_excel(tag_file) if tag_file.filename.endswith(('xlsx','xls')) else pd.read_csv(tag_file)
-        result = table_matcher(main_df, tag_df)
-        return jsonify(result)
-    else:
-        data = request.get_json()
-        result = table_matcher(**data)
-        return jsonify(result)
+    try:
+        if request.content_type and request.content_type.startswith('multipart/form-data'):
+            main_file = request.files['main_file']
+            tag_file = request.files['tag_file']
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(main_file.filename)[1]) as tmp_main, \
+                 tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(tag_file.filename)[1]) as tmp_tag:
+                main_file.save(tmp_main.name)
+                tag_file.save(tmp_tag.name)
+                result = table_matcher(tmp_main.name, tmp_tag.name)
+            return jsonify(result)
+        else:
+            data = request.get_json()
+            result = table_matcher(**data)
+            return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # 標籤統計
 @app.route('/api/extract_tags', methods=['POST'])
 def api_extract_tags():
-    data = request.get_json()
-    text = data.get('text', '')
-    tags = extract_tags(text)
-    return jsonify({'tags': tags})
+    try:
+        data = request.get_json()
+        text = data.get('text', '')
+        tags = extract_tags(text)
+        return jsonify({'tags': tags})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # 批次工時計算
 @app.route('/api/calculate_hours', methods=['POST'])
 def api_calculate_hours():
-    if request.content_type and request.content_type.startswith('multipart/form-data'):
-        file = request.files['file']
-        filename = file.filename
-        df = pd.read_excel(file) if filename.endswith(('xlsx','xls')) else pd.read_csv(file)
-        result = calculate_hours(df)
-        return jsonify(result)
-    else:
-        data = request.get_json()
-        result = calculate_hours(**data)
-        return jsonify(result)
+    try:
+        if request.content_type and request.content_type.startswith('multipart/form-data'):
+            file = request.files['file']
+            filename = file.filename
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp:
+                file.save(tmp.name)
+                result = calculate_hours(tmp.name)
+            return jsonify(result)
+        else:
+            data = request.get_json()
+            result = calculate_hours(**data)
+            return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # 時間格式轉換
 @app.route('/api/timeformattransfer', methods=['POST'])
 def api_timeformattransfer():
-    if request.content_type and request.content_type.startswith('multipart/form-data'):
-        file = request.files['file']
-        filename = file.filename
-        df = pd.read_excel(file) if filename.endswith(('xlsx','xls')) else pd.read_csv(file)
-        # 假設 timeformattransfer_module 有 timeformattransfer 函數
-        from timeformattransfer_module import timeformattransfer
-        result = timeformattransfer(df)
-        return jsonify(result)
-    else:
-        data = request.get_json()
-        from timeformattransfer_module import timeformattransfer
-        result = timeformattransfer(**data)
-        return jsonify(result)
+    try:
+        if request.content_type and request.content_type.startswith('multipart/form-data'):
+            file = request.files['file']
+            filename = file.filename
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp:
+                file.save(tmp.name)
+                from timeformattransfer_module import timeformattransfer
+                result = timeformattransfer(tmp.name)
+            return jsonify(result)
+        else:
+            data = request.get_json()
+            from timeformattransfer_module import timeformattransfer
+            result = timeformattransfer(**data)
+            return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # 進階工時計算
 @app.route('/api/advanced_time_calculator', methods=['POST'])
 def api_advanced_time_calculator():
-    if request.content_type and request.content_type.startswith('multipart/form-data'):
-        file = request.files['file']
-        filename = file.filename
-        df = pd.read_excel(file) if filename.endswith(('xlsx','xls')) else pd.read_csv(file)
-        # 假設 test_calculation_module 有 advanced_time_calculator 函數
-        from test_calculation_module import advanced_time_calculator
-        result = advanced_time_calculator(df)
-        return jsonify(result)
-    else:
-        data = request.get_json()
-        from test_calculation_module import advanced_time_calculator
-        result = advanced_time_calculator(**data)
-        return jsonify(result)
+    try:
+        if request.content_type and request.content_type.startswith('multipart/form-data'):
+            file = request.files['file']
+            filename = file.filename
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp:
+                file.save(tmp.name)
+                from test_calculation_module import advanced_time_calculator
+                result = advanced_time_calculator(tmp.name)
+            return jsonify(result)
+        else:
+            data = request.get_json()
+            from test_calculation_module import advanced_time_calculator
+            result = advanced_time_calculator(**data)
+            return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # 表格模糊匹配
 @app.route('/api/fuzzy_match', methods=['POST'])
 def api_fuzzy_match():
-    if request.content_type and request.content_type.startswith('multipart/form-data'):
-        file_a = request.files['file_a']
-        file_b = request.files['file_b']
-        df_a = pd.read_excel(file_a) if file_a.filename.endswith(('xlsx','xls')) else pd.read_csv(file_a)
-        df_b = pd.read_excel(file_b) if file_b.filename.endswith(('xlsx','xls')) else pd.read_csv(file_b)
-        # 假設 table_matcher_func 有 fuzzy_match 函數
-        from table_matcher_func import fuzzy_match
-        result = fuzzy_match(df_a, df_b)
-        return jsonify(result)
-    else:
-        data = request.get_json()
-        from table_matcher_func import fuzzy_match
-        result = fuzzy_match(**data)
-        return jsonify(result)
+    try:
+        if request.content_type and request.content_type.startswith('multipart/form-data'):
+            file_a = request.files['file_a']
+            file_b = request.files['file_b']
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file_a.filename)[1]) as tmp_a, \
+                 tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file_b.filename)[1]) as tmp_b:
+                file_a.save(tmp_a.name)
+                file_b.save(tmp_b.name)
+                from table_matcher_func import fuzzy_match
+                result = fuzzy_match(tmp_a.name, tmp_b.name)
+            return jsonify(result)
+        else:
+            data = request.get_json()
+            from table_matcher_func import fuzzy_match
+            result = fuzzy_match(**data)
+            return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # 其他功能依此模式擴充
 
