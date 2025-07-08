@@ -46,7 +46,12 @@ def keyword_extraction(file_path: str, output_dir: Optional[str]=None, font_path
         df = pd.read_csv(file_path)
     else:
         raise ValueError(f"不支援的檔案格式：{ext}")
-    df['company'] = df['主旨'].astype(str).apply(extract_company)
+    # 優化：自動偵測主旨欄位
+    possible_cols = ['主旨', 'subject', '主題', 'title']
+    col = next((c for c in possible_cols if c in df.columns), None)
+    if not col:
+        raise ValueError(f"找不到主旨欄位，請確認欄位名稱（支援：{', '.join(possible_cols)}）")
+    df['company'] = df[col].astype(str).apply(extract_company)
     counts = Counter(df['company'].dropna())
     if not output_dir:
         output_dir = os.path.dirname(file_path)
