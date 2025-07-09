@@ -18,7 +18,7 @@ EXCLUSION_LIST = [
 EXCLUSIONS = set(item.lower().strip() for item in EXCLUSION_LIST)
 
 # 可選中文字體
-FONT_PATH = '/System/Library/Fonts/STHeiti Light.ttc'
+FONT_PATH = os.path.join(os.path.dirname(__file__), 'fonts', 'NotoSansCJKtc-Regular.otf')
 
 def extract_company(subject):
     segments = re.findall(r'\[([^\]]+)\]', subject)
@@ -60,7 +60,11 @@ def keyword_extraction(file_path: str, output_dir: Optional[str]=None, font_path
     # 詞雲
     if not font_path:
         font_path = FONT_PATH
-    wc = WordCloud(width=800, height=400, background_color='white', font_path=font_path).generate_from_frequencies(counts)
+    try:
+        wc = WordCloud(width=800, height=400, background_color='white', font_path=font_path).generate_from_frequencies(counts)
+    except Exception as e:
+        # fallback: 沒有字型就用預設英文字型
+        wc = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(counts)
     img_path = os.path.join(output_dir, 'company_wordcloud.png')
     plt.figure(figsize=(10, 5))
     plt.imshow(wc, interpolation='bilinear')
