@@ -20,6 +20,10 @@ CORS(app)
 def serve_index():
     return send_from_directory(app.static_folder, 'index.html')
 
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('static', filename)
+
 # 關鍵字計數
 @app.route('/api/keyword_count', methods=['POST'])
 def api_keyword_count():

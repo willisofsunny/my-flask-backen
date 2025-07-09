@@ -54,7 +54,10 @@ def keyword_extraction(file_path: str, output_dir: Optional[str]=None, font_path
     df['company'] = df[col].astype(str).apply(extract_company)
     counts = Counter(df['company'].dropna())
     if not output_dir:
-        output_dir = os.path.dirname(file_path)
+        # 強制輸出到 static 目錄
+        output_dir = os.path.join(os.path.dirname(__file__), 'static')
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     csv_path = os.path.join(output_dir, 'company_counts.csv')
     pd.DataFrame(counts.items(), columns=['company', 'count']).to_csv(csv_path, index=False, encoding='utf-8-sig')
     # 詞雲
@@ -63,13 +66,15 @@ def keyword_extraction(file_path: str, output_dir: Optional[str]=None, font_path
     try:
         wc = WordCloud(width=800, height=400, background_color='white', font_path=font_path).generate_from_frequencies(counts)
     except Exception as e:
-        # fallback: 沒有字型就用預設英文字型
         wc = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(counts)
-    img_path = os.path.join(output_dir, 'company_wordcloud.png')
+    img_filename = 'company_wordcloud.png'
+    img_path = os.path.join(output_dir, img_filename)
     plt.figure(figsize=(10, 5))
     plt.imshow(wc, interpolation='bilinear')
     plt.axis('off')
     plt.tight_layout()
     plt.savefig(img_path)
     plt.close()
-    return pd.DataFrame(counts.items(), columns=['company', 'count']), img_path 
+    # 回傳靜態路徑
+    img_url = f'/static/{img_filename}'
+    return pd.DataFrame(counts.items(), columns=['company', 'count']), img_url 
